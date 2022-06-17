@@ -132,6 +132,3 @@ def updateFrame(VideoLoader, bBx):
 
 if __name__ == '__main__':
     main()
-
-
-#test branch
