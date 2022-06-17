@@ -8,6 +8,7 @@ class VideoLoader:
         self.cap = cv2.VideoCapture(video_path)
         self.frame = None
         self.original_frame = None
+        self.frameNum = 0
         if not self.cap.isOpened():
             print('Error opening video stream or file')
             exit()
@@ -23,19 +24,29 @@ class JSONLoader:
     def __init__(self, json_path):
         self.json_path = json_path
         self.json_data = None
+        self.length = None
         self.load_json()
     def load_json(self):
         with open(self.json_path) as json_file:
             self.json_data = json.load(json_file)
+            print(self.json_data.keys())
+        self.length = len(self.json_data)
+        print(self.length)
+    def add_label(self, bBx, videoLoader):
+        self.json_data[self.length] = {
+            'boundingBoxes': bBx.boundingBoxes,
+            'frame': videoLoader.frameNum,
+        }
+        self.length += 1
+        print(self.length)
     def saveJSON(self):
+        print('Saving JSON')
         with open(self.json_path, 'w') as json_file:
             json.dump(self.json_data, json_file)
-    def add_label(self, bBx, ):
-        self.json_data['boxes'].append(bBx.to_json())
-        self.saveJSON()
 
 class BoundingBoxes:
     def __init__(self):
+        self.id = 0
         self.boundingBoxes = []
         self.currentBox = None
     def drawBoudingBoxes(self, frame):
@@ -73,6 +84,9 @@ def main():
     cv2.namedWindow('Video', cv2.WINDOW_GUI_NORMAL)
     bBx = BoundingBoxes()
     cv2.setMouseCallback('Video', onclick, bBx)
+
+    # Load the JSON file
+    data = JSONLoader('data/label.json')
     
     # Display the first frame in the window
     video_loader.load_frame()
@@ -88,8 +102,10 @@ def main():
         if keyPress == 27:
             bBx.popBoundingBoxes()
         elif keyPress == ord('q'):
+            data.saveJSON()
             break
         elif keyPress == ord('s'):
+            data.add_label(bBx, video_loader)
             bBx.clearBoundingBoxes()
             print('Saved')
             for i in range(10):
