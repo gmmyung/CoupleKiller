@@ -1,6 +1,9 @@
 from turtle import up
 import cv2
 import json
+import os
+
+increment_frame = 100
 
 class VideoLoader:
     def __init__(self, video_path):
@@ -8,17 +11,26 @@ class VideoLoader:
         self.cap = cv2.VideoCapture(video_path)
         self.frame = None
         self.original_frame = None
-        self.frameNum = 0
+        self.frameNum = 1
         if not self.cap.isOpened():
             print('Error opening video stream or file')
             exit()
 
-    def load_frame(self):
-        ret, self.original_frame = self.cap.read()
-        self.frame = self.original_frame.copy()
+    def load_frame(self, frame_num = None):
+        if frame_num is not None:
+            self.frameNum = frame_num
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.frameNum-1)
+        ret, self.original_frame = self.cap.read()     
         if not ret:
             print('Reached end of video')
             exit()
+        self.frame = self.original_frame.copy()
+        self.frameNum += 1
+    def updateFrame(self, bBx):
+        self.frame = bBx.drawBoudingBoxes(self.original_frame)
+        cv2.imshow('Video', self.frame)
+    def __del__(self):
+        self.cap.release()
 
 class JSONLoader:
     def __init__(self, json_path):
@@ -36,6 +48,7 @@ class JSONLoader:
         self.json_data[self.length] = {
             'boundingBoxes': bBx.boundingBoxes,
             'frame': videoLoader.frameNum,
+            'fileName': videoLoader.video_path
         }
         self.length += 1
         print(self.length)
@@ -89,13 +102,16 @@ def main():
     data = JSONLoader('data/label.json')
     
     # Display the first frame in the window
-    video_loader.load_frame()
-    cv2.imshow('Video', video_loader.frame)
+    if data.length != 0:
+        video_loader.load_frame(data.json_data[str(data.length-1)]['frame']+increment_frame)
+    else:
+        video_loader.load_frame()
+    # cv2.imshow('Video', video_loader.frame)
 
     # Display the video in the window
     while video_loader.cap.isOpened():
         # Display the frame in the window
-        updateFrame(video_loader, bBx)
+        video_loader.updateFrame(bBx)
 
         # Check if the user wants to quit
         keyPress = cv2.waitKey(1)
@@ -103,14 +119,19 @@ def main():
             bBx.popBoundingBoxes()
         elif keyPress == ord('q'):
             data.saveJSON()
+            
             break
         elif keyPress == ord('s'):
             data.add_label(bBx, video_loader)
+            # save image
+            pathwithoutExtenstion = os.path.splitext(video_loader.video_path)[0]
+            cv2.imwrite('data/photos/'+os.path.basename(pathwithoutExtenstion)+'_'+str(data.length)+'.jpg', video_loader.original_frame)
             bBx.clearBoundingBoxes()
             print('Saved')
-            for i in range(10):
-                video_loader.load_frame()
-    
+            #for i in range(10):
+            video_loader.frameNum += increment_frame
+            video_loader.load_frame()
+
 def onclick(event, x, y, flags, bBx):
     if event == cv2.EVENT_FLAG_LBUTTON:
         if not onclick.selected:
@@ -125,10 +146,6 @@ def onclick(event, x, y, flags, bBx):
             bBx.currentBox = (bBx.currentBox[0], bBx.currentBox[1], x, y)
 
 onclick.selected = False
-
-def updateFrame(VideoLoader, bBx):
-    VideoLoader.frame = bBx.drawBoudingBoxes(VideoLoader.original_frame)
-    cv2.imshow('Video', VideoLoader.frame)
 
 if __name__ == '__main__':
     main()
