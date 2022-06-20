@@ -1,10 +1,19 @@
-from turtle import up
 import cv2
 import json
 import os
 
 increment_frame = 100
 
+def init_directories():
+    if not os.path.exists('data'):
+            os.makedirs('data')
+    if not os.path.exists('data/photos'):
+            os.makedirs('data/photos')
+    if not os.path.isfile('data/label.json'):
+        with open('data/label.json', 'w') as json_file:
+            json.dump({}, json_file)
+
+# Load the video from file, manages the frame number, and loads the frame with bounding boxes
 class VideoLoader:
     def __init__(self, video_path):
         self.video_path = video_path
@@ -15,11 +24,10 @@ class VideoLoader:
         if not self.cap.isOpened():
             print('Error opening video stream or file')
             exit()
-
     def load_frame(self, frame_num = None):
         if frame_num is not None:
-            self.frameNum = frame_num
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.frameNum-1)
+            self.frameNum = frame_num-1
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.frameNum)
         ret, self.original_frame = self.cap.read()     
         if not ret:
             print('Reached end of video')
@@ -32,11 +40,13 @@ class VideoLoader:
     def __del__(self):
         self.cap.release()
 
+# Load the JSON label file, add labels, and save the JSON file
 class JSONLoader:
     def __init__(self, json_path):
         self.json_path = json_path
         self.json_data = None
         self.length = None
+        self.decrement_once = False
         self.load_json()
     def load_json(self):
         with open(self.json_path) as json_file:
@@ -45,6 +55,7 @@ class JSONLoader:
         self.length = len(self.json_data)
         print(self.length)
     def add_label(self, bBx, videoLoader):
+        self.decrement_once = False
         self.json_data[self.length] = {
             'boundingBoxes': bBx.boundingBoxes,
             'frame': videoLoader.frameNum,
@@ -56,7 +67,16 @@ class JSONLoader:
         print('Saving JSON')
         with open(self.json_path, 'w') as json_file:
             json.dump(self.json_data, json_file)
+    def decrement_frame(self):
+        if self.length == 1:
+            pass
+        elif self.decrement_once:
+            self.json_data.pop(self.length-1)
+            self.length -= 1
+        else:
+            self.decrement_once = True
 
+# Create a class for a set of bounding boxes for each frame
 class BoundingBoxes:
     def __init__(self):
         self.id = 0
@@ -77,18 +97,22 @@ class BoundingBoxes:
     def finishCurrentBox(self):
         self.boundingBoxes.append(self.currentBox)
         self.currentBox = None
-    def popBoundingBoxes(self):
+    def popBoundingBoxes(self, jsonLoader, videoLoader):
         if self.currentBox is not None:
             self.currentBox = None
             onclick.selected = False
         elif len(self.boundingBoxes) > 0:
-                self.boundingBoxes.pop()
+            self.boundingBoxes.pop()
+        elif len(self.boundingBoxes) == 0:
+            jsonLoader.decrement_frame()
+            self.boundingBoxes = jsonLoader.json_data[jsonLoader.length-1]['boundingBoxes']
+            videoLoader.load_frame(jsonLoader.json_data[jsonLoader.length-1]['frame'])
     def clearBoundingBoxes(self):
         self.boundingBoxes = []
         self.currentBox = None
-    
 
 def main():
+    init_directories()
     # Load the video from file
     video_path = 'videos/001.avi'
     video_loader = VideoLoader(video_path)
@@ -116,7 +140,7 @@ def main():
         # Check if the user wants to quit
         keyPress = cv2.waitKey(1)
         if keyPress == 27:
-            bBx.popBoundingBoxes()
+            bBx.popBoundingBoxes(data, video_loader)
         elif keyPress == ord('q'):
             data.saveJSON()
             
@@ -125,13 +149,14 @@ def main():
             data.add_label(bBx, video_loader)
             # save image
             pathwithoutExtenstion = os.path.splitext(video_loader.video_path)[0]
+            # print frame number
+            print(video_loader.frameNum)
             cv2.imwrite('data/photos/'+os.path.basename(pathwithoutExtenstion)+'_'+str(data.length)+'.jpg', video_loader.original_frame)
             bBx.clearBoundingBoxes()
             print('Saved')
-            #for i in range(10):
-            video_loader.frameNum += increment_frame
-            video_loader.load_frame()
+            video_loader.load_frame(video_loader.frameNum + increment_frame)
 
+# Callback function for mouse events
 def onclick(event, x, y, flags, bBx):
     if event == cv2.EVENT_FLAG_LBUTTON:
         if not onclick.selected:

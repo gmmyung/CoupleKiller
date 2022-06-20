@@ -1,3 +1,4 @@
 .DS_Store
 /videos
 /data
+/__pycache__
