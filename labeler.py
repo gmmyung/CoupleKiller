@@ -1,7 +1,7 @@
 import cv2
 import json
 import os
-from jsonloader import JSONLoader, VideoLoader, BoundingBoxes
+from utils import JSONLoader, VideoLoader, BoundingBoxes
 
 increment_frame = 50
 
