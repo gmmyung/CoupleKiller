@@ -1,5 +1,10 @@
 import json
 import cv2
+import av
+import numpy as np
+
+# TODO: Solve frame reverting back to previous frame randomly.
+
 
 # Load the JSON label file, add labels, and save the JSON file
 class JSONLoader:
@@ -12,7 +17,6 @@ class JSONLoader:
     def load_json(self):
         with open(self.json_path) as json_file:
             self.json_data = json.load(json_file)
-            print(self.json_data.keys())
         self.length = len(self.json_data)
         print(self.length)
     def add_label(self, bBx, videoLoader):
@@ -23,7 +27,6 @@ class JSONLoader:
             'fileName': videoLoader.video_path
         }
         self.length += 1
-        print(self.length)
     def saveJSON(self):
         print('Saving JSON')
         with open(self.json_path, 'w') as json_file:
@@ -37,32 +40,52 @@ class JSONLoader:
         else:
             self.decrement_once = True
 
-# Load the video from file, manages the frame number, and loads the frame with bounding boxes
+
 class VideoLoader:
     def __init__(self, video_path):
         self.video_path = video_path
-        self.cap = cv2.VideoCapture(video_path)
+        self.container = av.container.open(self.video_path)
+        self.frameNum = 0
         self.frame = None
         self.original_frame = None
-        self.frameNum = 1
-        if not self.cap.isOpened():
-            print('Error opening video stream or file')
-            exit()
-    def load_frame(self, frame_num = None):
-        if frame_num is not None:
-            self.frameNum = frame_num-1
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.frameNum)
-        ret, self.original_frame = self.cap.read()     
-        if not ret:
-            print('Reached end of video')
-            exit()
-        self.frame = self.original_frame.copy()
+        self.stream = self.container.streams.video[0]
+        self.total_frames = self.stream.frames
+        self.seek(0)
+
+    def iter_frames(self):
+        for packet in self.container.demux(self.stream):
+            if packet.dts is None:
+                continue
+            for frame in packet.decode():
+                yield frame
+
+    def __del__(self):
+        self.container.close()
+
+    def load_frame(self, frameNum=None):
+        if frameNum is not None:
+            self.seek(frameNum)
+        try:
+            frame = next(self.iter)
+        except StopIteration:
+            self.end = True
+            return None
         self.frameNum += 1
+        self.original_frame = frame.to_ndarray(format='bgr24')
+    def seek(self, frame):
+        pts = int(frame * self.stream.duration / self.stream.frames)
+        self.container.seek(pts, stream=self.stream)
+        for j, f in enumerate(self.iter_frames()):
+            # if j > 100:
+            #     raise RuntimeError('Did not find target within 100 frames of seek')
+            if f.pts >= pts - 1:
+                break
+        self.end = False
+        self.frameNum = frame
+        self.iter = iter(self.iter_frames())
     def updateFrame(self, bBx):
         self.frame = bBx.drawBoudingBoxes(self.original_frame)
         cv2.imshow('Video', self.frame)
-    def __del__(self):
-        self.cap.release()
 
 # Create a class for a set of bounding boxes for each frame
 class BoundingBoxes:
