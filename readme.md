@@ -24,3 +24,21 @@ In order to set up your enviornment, follow these steps:
 ## 3. Install OpenCV
 
 ```conda install -c conda-forge opencv```
+
+## 4. Clone yolov5
+
+Refer to this [link](https://github.com/ultralytics/yolov5)
+
+## 5. Label the data
+
+```python labeler.py```
+
+## 6. Format the data suitable for yolov5
+
+```python formatter.py```
+
+## 6. Train the model
+
+```cd yolov5```
+```python train.py --img 640 --batch 16 --epochs 100 --data ../CoupleKiller.yaml --weights yolov5n.pt```
+
