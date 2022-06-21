@@ -3,13 +3,13 @@ import json
 import os
 from utils import JSONLoader, VideoLoader, BoundingBoxes
 
-increment_frame = 50
+increment_frame = 100
 
 def init_directories():
     if not os.path.exists('data'):
             os.makedirs('data')
-    if not os.path.exists('data/photos'):
-            os.makedirs('data/photos')
+    if not os.path.exists('data/images'):
+            os.makedirs('data/images')
     if not os.path.isfile('data/label.json'):
         with open('data/label.json', 'w') as json_file:
             json.dump({}, json_file)
@@ -42,7 +42,7 @@ def main():
         elif keyPress == ord('s'):
             data.add_label(bBx, video_loader)
             pathwithoutExtenstion = os.path.splitext(video_loader.video_path)[0]
-            cv2.imwrite('data/photos/'+os.path.basename(pathwithoutExtenstion)+'_'+str(data.length)+'.jpg', video_loader.original_frame)
+            cv2.imwrite('data/images/'+os.path.basename(pathwithoutExtenstion)+'_'+str(data.length)+'.jpg', video_loader.original_frame)
             bBx.clearBoundingBoxes()
             video_loader.load_frame(video_loader.frameNum + increment_frame)
 

@@ -1,10 +1,6 @@
 import json
 import cv2
 import av
-import numpy as np
-
-# TODO: Solve frame reverting back to previous frame randomly.
-
 
 # Load the JSON label file, add labels, and save the JSON file
 class JSONLoader:
@@ -21,7 +17,7 @@ class JSONLoader:
         print(self.length)
     def add_label(self, bBx, videoLoader):
         self.decrement_once = False
-        self.json_data[self.length] = {
+        self.json_data[str(self.length)] = {
             'boundingBoxes': bBx.boundingBoxes,
             'frame': videoLoader.frameNum,
             'fileName': videoLoader.video_path
@@ -32,10 +28,10 @@ class JSONLoader:
         with open(self.json_path, 'w') as json_file:
             json.dump(self.json_data, json_file)
     def decrement_frame(self):
-        if self.length == 1:
+        if self.length <= 1:
             pass
         elif self.decrement_once:
-            self.json_data.pop(self.length-1)
+            self.json_data.pop(str(self.length-1))
             self.length -= 1
         else:
             self.decrement_once = True
@@ -76,8 +72,6 @@ class VideoLoader:
         pts = int(frame * self.stream.duration / self.stream.frames)
         self.container.seek(pts, stream=self.stream)
         for j, f in enumerate(self.iter_frames()):
-            # if j > 100:
-            #     raise RuntimeError('Did not find target within 100 frames of seek')
             if f.pts >= pts - 1:
                 break
         self.end = False
@@ -117,8 +111,8 @@ class BoundingBoxes:
             self.boundingBoxes.pop()
         elif len(self.boundingBoxes) == 0:
             jsonLoader.decrement_frame()
-            self.boundingBoxes = jsonLoader.json_data[jsonLoader.length-1]['boundingBoxes']
-            videoLoader.load_frame(jsonLoader.json_data[jsonLoader.length-1]['frame'])
+            self.boundingBoxes = jsonLoader.json_data[str(jsonLoader.length-1)]['boundingBoxes']
+            videoLoader.load_frame(jsonLoader.json_data[str(jsonLoader.length-1)]['frame'])
     def clearBoundingBoxes(self):
         self.boundingBoxes = []
         self.currentBox = None
