@@ -19,11 +19,13 @@ In order to set up your enviornment, follow these steps:
 
 ```conda create --name CoupleKiller```
 
-```conda init CoupleKiller```
+```conda activate CoupleKiller```
 
-## 3. Install OpenCV
+## 3. Install OpenCV and Pyav
 
 ```conda install -c conda-forge opencv```
+
+```pip install av```
 
 ## 4. Clone yolov5
 
@@ -40,5 +42,6 @@ Refer to this [link](https://github.com/ultralytics/yolov5)
 ## 6. Train the model
 
 ```cd yolov5```
+
 ```python train.py --img 640 --batch 16 --epochs 100 --data ../CoupleKiller.yaml --weights yolov5n.pt```
 
