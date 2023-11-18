@@ -2,16 +2,13 @@ Couple Killer, just because I hate couples
 ==========================================
 This project intends to eliminate ALL COUPLES in the street.
 
-![Alt Text](example.gif)
-
-[Demo]
+![Demo GIF](example.gif)
 
 # Requirements
 
 - Conda enviorment
 - Python
 - opencv2
-- TBD
 
 In order to set up your enviornment, follow these steps:
 
